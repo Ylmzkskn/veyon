@@ -1,7 +1,7 @@
 /*
  * FileTransferPlugin.cpp - implementation of FileTransferPlugin class
  *
- * Copyright (c) 2018-2025 Tobias Junghans <tobydox@veyon.io>
+ * Copyright (c) 2018-2026 Tobias Junghans <tobydox@veyon.io>
  *
  * This file is part of Veyon - https://veyon.io
  *
@@ -38,6 +38,7 @@
 #include "FileTransferPlugin.h"
 #include "FileTransferUserConfiguration.h"
 #include "FeatureWorkerManager.h"
+#include "PlatformCoreFunctions.h"
 #include "PlatformFilesystemFunctions.h"
 #include "SystemTrayIcon.h"
 #include "VeyonMasterInterface.h"
@@ -146,34 +147,42 @@ bool FileTransferPlugin::handleFeatureMessage(ComputerControlInterface::Pointer 
 {
 	if (message.featureUid() == m_collectFilesFeature.uid())
 	{
+		const auto collectionId = message.argument(Argument::CollectionId).toUuid();
+		const auto transferId = message.argument(Argument::TransferId).toUuid();
+
 		switch (message.command<FeatureCommand>())
 		{
 		case FeatureCommand::InitFileCollection:
 			m_fileCollectController->initCollection(computerControlInterface,
-													message.argument(Argument::CollectionId).toUuid(),
+													collectionId,
 													message.argument(Argument::Files).toStringList());
 			break;
 		case FeatureCommand::StartFileTransfer:
 			m_fileCollectController->startFileTransfer(computerControlInterface,
-													   message.argument(Argument::CollectionId).toUuid(),
-													   message.argument(Argument::TransferId).toUuid(),
+													   collectionId,
+													   transferId,
 													   message.argument(Argument::FileName).toString(),
 													   message.argument(Argument::FileSize).toLongLong());
 			break;
 		case FeatureCommand::ContinueFileTransfer:
 			m_fileCollectController->continueFileTransfer(computerControlInterface,
-														  message.argument(Argument::CollectionId).toUuid(),
+														  collectionId,
 														  message.argument(Argument::TransferId).toUuid(),
 														  message.argument(Argument::DataChunk).toByteArray());
 			break;
 		case FeatureCommand::FinishFileTransfer:
 			m_fileCollectController->finishFileTransfer(computerControlInterface,
-														message.argument(Argument::CollectionId).toUuid(),
+														collectionId,
 														message.argument(Argument::TransferId).toUuid());
 			break;
+		case FeatureCommand::SkipFileTransfer:
+			m_fileCollectController->skipToNextFileTransfer(computerControlInterface, collectionId);
+			break;
+		case FeatureCommand::RetryFileTransfer:
+			m_fileCollectController->retryFileTransfer(computerControlInterface, collectionId);
+			break;
 		case FeatureCommand::FinishFileCollection:
-			m_fileCollectController->finishFileCollection(computerControlInterface,
-														  message.argument(Argument::CollectionId).toUuid());
+			m_fileCollectController->finishFileCollection(computerControlInterface, collectionId);
 			break;
 		default:
 			break;
@@ -196,10 +205,10 @@ bool FileTransferPlugin::handleFeatureMessage( VeyonServerInterface& server,
 	{
 		if (message.command<FeatureCommand>() == FeatureCommand::FinishFileTransfer)
 		{
-			VeyonCore::builtinFeatures().systemTrayIcon().showMessage( m_distributeFilesFeature.displayName(),
-																	   tr( "Received file \"%1\"." ).
-																	   arg( message.argument( Argument::FileName ).toString() ),
-																	   server.featureWorkerManager() );
+			VeyonCore::builtinFeatures().systemTrayIcon().showMessage(tr("File transfer"),
+																	  tr("Received file %1.").
+																	  arg(message.argument(Argument::FileName).toString()),
+																	  server.featureWorkerManager());
 		}
 
 		// forward message to worker
@@ -382,6 +391,48 @@ QString FileTransferPlugin::destinationDirectory() const
 
 
 
+FileTransferPlugin::LockedFileAction FileTransferPlugin::queryLockedFileAction(const QString& fileName)
+{
+	qApp->setQuitOnLastWindowClosed(false);
+
+	const auto processId = VeyonCore::platform().filesystemFunctions().findFileLockingProcess(fileName);
+	const auto applicationName = VeyonCore::platform().coreFunctions().getApplicationName(processId);
+
+	QMessageBox lockedFileNotification(QMessageBox::Warning,
+									   tr("File transfer"),
+									   (applicationName.isEmpty() ?
+											tr("The file %1 is to be collected, but is still open in an application.").arg(fileName)
+										  :
+											tr("The file %1 is to be collected, but is still open in the application <b>%2</b>.").arg(fileName, applicationName)
+											)
+									   + QLatin1Char(' ') +
+									   tr("Please save your changes and close the program so that the transfer can be completed.")
+									   , QMessageBox::Retry | QMessageBox::Ignore);
+
+	VeyonCore::platform().coreFunctions().raiseWindow(&lockedFileNotification, true);
+
+	if (lockedFileNotification.exec() == QMessageBox::Retry)
+	{
+		return LockedFileAction::RetryOpeningLockedFile;
+	}
+
+	QMessageBox confirmDialog(QMessageBox::Question,
+							  tr("File transfer"),
+							  tr("Are you sure you want to skip transferring the file %1?").
+							  arg(fileName, QString{}), QMessageBox::Yes | QMessageBox::No);
+
+	VeyonCore::platform().coreFunctions().raiseWindow(&confirmDialog, true);
+
+	if (confirmDialog.exec() == QMessageBox::Yes)
+	{
+		return LockedFileAction::SkipLockedFile;
+	}
+
+	return LockedFileAction::RetryOpeningLockedFile;
+}
+
+
+
 ConfigurationPage* FileTransferPlugin::createConfigurationPage()
 {
 	return new FileTransferConfigurationPage( m_configuration );
@@ -400,8 +451,8 @@ bool FileTransferPlugin::handleDistributeFilesMessage(const FeatureMessage& mess
 		m_currentFile.setFileName(m_currentFileName);
 		if( m_currentFile.exists() && message.argument(Argument::OverwriteExistingFile).toBool() == false )
 		{
-			QMessageBox::critical(nullptr, m_distributeFilesFeature.displayName(),
-								  tr("Could not receive file \"%1\" as it already exists.").
+			QMessageBox::critical(nullptr, tr("File transfer"),
+								  tr("Could not receive file %1 as it already exists.").
 								  arg(m_currentFile.fileName()));
 			return true;
 		}
@@ -415,8 +466,8 @@ bool FileTransferPlugin::handleDistributeFilesMessage(const FeatureMessage& mess
 		}
 		else
 		{
-			QMessageBox::critical(nullptr, m_distributeFilesFeature.displayName(),
-								  tr("Could not receive file \"%1\" as it could not be opened for writing!").
+			QMessageBox::critical(nullptr, tr("File transfer"),
+								  tr("Could not receive file %1 as it could not be opened for writing!").
 								  arg(m_currentFile.fileName()));
 		}
 		return true;
@@ -497,17 +548,31 @@ bool FileTransferPlugin::handleCollectFilesMessage(VeyonWorkerInterface& worker,
 	case FeatureCommand::StartFileTransfer:
 		if (fileCollectWorker)
 		{
-			if (fileCollectWorker->startNextTransfer())
+			const auto [state, fileName] = fileCollectWorker->startNextTransfer();
+			switch (state)
 			{
+			case FileCollectWorker::TransferState::Started:
 				worker.sendFeatureMessageReply(reply
 											   .addArgument(Argument::TransferId, fileCollectWorker->currentTransferId())
 											   .addArgument(Argument::FileName, fileCollectWorker->currentFileName())
 											   .addArgument(Argument::FileSize, fileCollectWorker->currentFileSize())
 											   );
-			}
-			else
-			{
+				break;
+			case FileCollectWorker::TransferState::AllFinished:
 				worker.sendFeatureMessageReply(reply.setCommand(FeatureCommand::FinishFileCollection));
+				break;
+			case FileCollectWorker::TransferState::WaitingForLockedFile:
+				switch (queryLockedFileAction(QDir::toNativeSeparators(fileName)))
+				{
+				case LockedFileAction::SkipLockedFile:
+					fileCollectWorker->skipToNextFile();
+					worker.sendFeatureMessageReply(reply.setCommand(FeatureCommand::SkipFileTransfer));
+					break;
+				case LockedFileAction::RetryOpeningLockedFile:
+					worker.sendFeatureMessageReply(reply.setCommand(FeatureCommand::RetryFileTransfer));
+					break;
+				}
+				break;
 			}
 			return true;
 		}

@@ -1,7 +1,7 @@
 /*
  * FileCollectController.cpp - implementation of FileCollectController class
  *
- * Copyright (c) 2025 Tobias Junghans <tobydox@veyon.io>
+ * Copyright (c) 2025-2026 Tobias Junghans <tobydox@veyon.io>
  *
  * This file is part of Veyon - https://veyon.io
  *
@@ -36,6 +36,7 @@ FileCollectController::FileCollectController(FileTransferPlugin* plugin) :
 	m_collectedFilesGroupingMode(configuration().collectedFilesGroupingMode()),
 	m_collectedFilesGroupingAttribute(configuration().collectedFilesGroupingAttribute())
 {
+	connect (this, &FileCollectController::collectionChanged, this, &FileCollectController::overallProgressChanged);
 }
 
 
@@ -170,6 +171,7 @@ void FileCollectController::stop()
 		m_running = false;
 
 		Q_EMIT finished();
+		Q_EMIT overallProgressChanged();
 
 		for (auto it = m_collections.constBegin(), end = m_collections.constEnd(); it != end; ++it)
 		{
@@ -210,6 +212,10 @@ void FileCollectController::initCollection(ComputerControlInterface::Pointer com
 
 		initiateNextFileTransfer(computerControlInterface, collection);
 	}
+	else
+	{
+		vWarning() << "collection" << collectionId << "not found";
+	}
 }
 
 
@@ -237,6 +243,10 @@ void FileCollectController::finishFileCollection(ComputerControlInterface::Point
 		{
 			stop();
 		}
+	}
+	else
+	{
+		vWarning() << "collection" << collectionId << "not found";
 	}
 }
 
@@ -282,6 +292,10 @@ void FileCollectController::startFileTransfer(ComputerControlInterface::Pointer 
 
 		m_plugin->sendContinueFileTransferMessage(collection, computerControlInterface);
 	}
+	else
+	{
+		vWarning() << "collection" << collectionId << "not found";
+	}
 }
 
 
@@ -293,11 +307,6 @@ void FileCollectController::continueFileTransfer(ComputerControlInterface::Point
 	if (m_collections.value(computerControlInterface).id == collectionId)
 	{
 		auto& collection = m_collections[computerControlInterface]; // clazy:exclude=detaching-member
-		if (collection.currentOutputFile == nullptr)
-		{
-			vCritical() << "file transfer not started";
-			return;
-		}
 		if (collection.currentTransferId != transferId)
 		{
 			vCritical() << "file transfer ID does not match" << collection.currentTransferId << transferId;
@@ -309,12 +318,58 @@ void FileCollectController::continueFileTransfer(ComputerControlInterface::Point
 			return;
 		}
 
-		collection.currentOutputFile->write(dataChunk);
+		if (collection.currentOutputFile)
+		{
+			collection.currentOutputFile->write(dataChunk);
+		}
+		else
+		{
+			vCritical() << "transfer not started / output file not available" << transferId;
+		}
 
 		Q_EMIT collectionChanged(collectionId);
-		Q_EMIT overallProgressChanged();
 
 		m_plugin->sendContinueFileTransferMessage(collection, computerControlInterface);
+	}
+	else
+	{
+		vWarning() << "collection" << collectionId << "not found";
+	}
+}
+
+
+
+void FileCollectController::retryFileTransfer(ComputerControlInterface::Pointer computerControlInterface,
+											  FileCollection::Id collectionId)
+{
+	if (m_collections.value(computerControlInterface).id == collectionId)
+	{
+		auto& collection = m_collections[computerControlInterface]; // clazy:exclude=detaching-member
+
+		m_plugin->sendStartFileTransferMessage(collection, computerControlInterface);
+	}
+	else
+	{
+		vWarning() << "collection" << collectionId << "not found";
+	}
+}
+
+
+
+void FileCollectController::skipToNextFileTransfer(ComputerControlInterface::Pointer computerControlInterface,
+												   FileCollection::Id collectionId)
+{
+	if (m_collections.value(computerControlInterface).id == collectionId)
+	{
+		auto& collection = m_collections[computerControlInterface]; // clazy:exclude=detaching-member
+
+		collection.processedFilesCount += 1;
+
+		initiateNextFileTransfer(computerControlInterface, collection);
+	}
+	else
+	{
+		vWarning() << "collection" << collectionId << "not found";
 	}
 }
 
@@ -326,26 +381,34 @@ void FileCollectController::finishFileTransfer(ComputerControlInterface::Pointer
 	if (m_collections.value(computerControlInterface).id == collectionId)
 	{
 		auto& collection = m_collections[computerControlInterface]; // clazy:exclude=detaching-member
-		if (collection.currentOutputFile == nullptr)
-		{
-			vCritical() << "file transfer not started";
-			return;
-		}
+
 		if (collection.currentTransferId != transferId)
 		{
 			vCritical() << "file transfer ID does not match" << collection.currentTransferId << transferId;
 			return;
 		}
 
-		collection.currentOutputFile->close();
-		delete collection.currentOutputFile;
-		collection.currentOutputFile = nullptr;
+		if (collection.currentOutputFile)
+		{
+			collection.currentOutputFile->close();
+			delete collection.currentOutputFile;
+			collection.currentOutputFile = nullptr;
+		}
+		else
+		{
+			vCritical() << "transfer not started / output file not available" << transferId;
+		}
+
 		collection.currentFileSize = 0;
 		collection.currentTransferId = FileCollection::TransferId{};
 
 		collection.processedFilesCount += 1;
 
 		initiateNextFileTransfer(computerControlInterface, collection);
+	}
+	else
+	{
+		vWarning() << "collection" << collectionId << "not found";
 	}
 }
 

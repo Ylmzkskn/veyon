@@ -1,7 +1,7 @@
 /*
  * UserLoginDialog.cpp - dialog for querying logon credentials
  *
- * Copyright (c) 2019-2025 Tobias Junghans <tobydox@veyon.io>
+ * Copyright (c) 2019-2026 Tobias Junghans <tobydox@veyon.io>
  *
  * This file is part of Veyon - https://veyon.io
  *
@@ -68,6 +68,5 @@ CryptoCore::PlaintextPassword UserLoginDialog::password() const
 
 void UserLoginDialog::updateOkButton()
 {
-	ui->buttonBox->button( QDialogButtonBox::Ok )->
-					setEnabled( !username().isEmpty() && !password().isEmpty() );
+	ui->buttonBox->button(QDialogButtonBox::Ok)->setEnabled(!username().isEmpty());
 }

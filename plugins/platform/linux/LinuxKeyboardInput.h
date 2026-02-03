@@ -1,7 +1,7 @@
 /*
  * LinuxKeyboardInput.h - declaration of LinuxKeyboardInput class
  *
- * Copyright (c) 2019-2025 Tobias Junghans <tobydox@veyon.io>
+ * Copyright (c) 2019-2026 Tobias Junghans <tobydox@veyon.io>
  *
  * This file is part of Veyon - https://veyon.io
  *
@@ -41,7 +41,7 @@ public:
 
 	void pressAndReleaseKey( const QByteArray& utf8Data );
 
-	void sendString( const QString& string );
+	void sendString(const QString& string, int keyPressInterval);
 
 private:
 	Display* m_display;

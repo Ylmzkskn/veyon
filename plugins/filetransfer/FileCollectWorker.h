@@ -1,7 +1,7 @@
 /*
  * FileCollectWorker.h - declaration of FileCollectWorker class
  *
- * Copyright (c) 2025 Tobias Junghans <tobydox@veyon.io>
+ * Copyright (c) 2025-2026 Tobias Junghans <tobydox@veyon.io>
  *
  * This file is part of Veyon - https://veyon.io
  *
@@ -36,6 +36,12 @@ class FileCollectWorker : public QObject
 {
 	Q_OBJECT
 public:
+	enum class TransferState {
+		Started,
+		WaitingForLockedFile,
+		AllFinished
+	};
+
 	explicit FileCollectWorker(FileTransferPlugin* plugin);
 	~FileCollectWorker() override;
 
@@ -59,7 +65,8 @@ public:
 		return m_files;
 	}
 
-	bool startNextTransfer();
+	QPair<TransferState, QString> startNextTransfer();
+	void skipToNextFile();
 	void cancelCurrentTransfer();
 
 	QByteArray readNextChunk();

@@ -1,7 +1,7 @@
 /*
  * FileCollectWorker.cpp - implementation of FileCollectWorker class
  *
- * Copyright (c) 2025 Tobias Junghans <tobydox@veyon.io>
+ * Copyright (c) 2025-2026 Tobias Junghans <tobydox@veyon.io>
  *
  * This file is part of Veyon - https://veyon.io
  *
@@ -43,6 +43,12 @@ static QStringList listFilesInDirectory(const QString& dirPath, const QList<QReg
 
 	for (const QFileInfo& fi : entries)
 	{
+		if (fi.isReadable() == false)
+		{
+			vDebug() << "skipping non-readable file" << fi.fileName();
+			continue;
+		}
+
 		bool exclude = false;
 		for (const auto& excludeRegEx : excludeRegExes)
 		{
@@ -95,26 +101,33 @@ FileCollectWorker::~FileCollectWorker()
 
 
 
-bool FileCollectWorker::startNextTransfer()
+QPair<FileCollectWorker::TransferState, QString> FileCollectWorker::startNextTransfer()
 {
-	if (m_currentFileIndex + 1 >= m_files.count())
+	const auto newFileIndex = m_currentFileIndex + 1;
+
+	if (newFileIndex >= m_files.count())
 	{
 		m_currentTransferId = FileCollection::TransferId{};
-		return false;
+		return {TransferState::AllFinished, {}};
 	}
 
-	++m_currentFileIndex;
 	m_currentTransferId = QUuid::createUuid();
 	m_currentFile.close();
-	m_currentFile.setFileName(m_sourceDirectory + std::as_const(m_files)[m_currentFileIndex]);
+	m_currentFile.setFileName(m_sourceDirectory + std::as_const(m_files)[newFileIndex]);
 	if (m_currentFile.open(QFile::ReadOnly))
 	{
-		vCritical() << "file opened" << m_currentFile.fileName();
-		return true;
+		m_currentFileIndex = newFileIndex;
+		return {TransferState::Started, m_currentFile.fileName()};
 	}
 
-	vCritical() << "file not opened";
-	return startNextTransfer();
+	return {TransferState::WaitingForLockedFile, m_currentFile.fileName()};
+}
+
+
+
+void FileCollectWorker::skipToNextFile()
+{
+	m_currentFileIndex++;
 }
 
 
@@ -162,6 +175,12 @@ void FileCollectWorker::initFiles()
 			it = m_files.erase(it);
 		}
 	}
+
+	// move files which currently can't be opened (i.e. locked files) to the end so that
+	// all readable files are collected first
+	std::stable_partition(m_files.begin(), m_files.end(), [&](const QString& fileName) {
+		return QFile(m_sourceDirectory + fileName).open(QFile::ReadOnly);
+	});
 }
 
 

@@ -1,7 +1,7 @@
 /*
  * LinuxFilesystemFunctions.h - declaration of LinuxFilesystemFunctions class
  *
- * Copyright (c) 2018-2025 Tobias Junghans <tobydox@veyon.io>
+ * Copyright (c) 2018-2026 Tobias Junghans <tobydox@veyon.io>
  *
  * This file is part of Veyon - https://veyon.io
  *
@@ -40,5 +40,7 @@ public:
 	bool setFileOwnerGroupPermissions( const QString& filePath, QFile::Permissions permissions ) override;
 
 	bool openFileSafely( QFile* file, QFile::OpenMode openMode, QFile::Permissions permissions ) override;
+
+	PlatformCoreFunctions::ProcessId findFileLockingProcess(const QString& filePath) const override;
 
 };

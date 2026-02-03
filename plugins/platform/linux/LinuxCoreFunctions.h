@@ -1,7 +1,7 @@
 /*
  * LinuxCoreFunctions.h - declaration of LinuxCoreFunctions class
  *
- * Copyright (c) 2017-2025 Tobias Junghans <tobydox@veyon.io>
+ * Copyright (c) 2017-2026 Tobias Junghans <tobydox@veyon.io>
  *
  * This file is part of Veyon - https://veyon.io
  *
@@ -73,6 +73,8 @@ public:
 	QString genericUrlHandler() const override;
 
 	QString queryDisplayDeviceName(const QScreen& screen) const override;
+
+	QString getApplicationName(ProcessId processId) const override;
 
 	using DBusInterfacePointer = QSharedPointer<QDBusInterface>;
 

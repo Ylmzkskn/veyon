@@ -1,7 +1,7 @@
 /*
  * FileCollectController.h - declaration of FileCollectController class
  *
- * Copyright (c) 2025 Tobias Junghans <tobydox@veyon.io>
+ * Copyright (c) 2025-2026 Tobias Junghans <tobydox@veyon.io>
  *
  * This file is part of Veyon - https://veyon.io
  *
@@ -113,6 +113,10 @@ public:
 	void continueFileTransfer(ComputerControlInterface::Pointer computerControlInterface,
 							  FileCollection::Id collectionId, FileCollection::TransferId transferId,
 							  const QByteArray& dataChunk);
+	void retryFileTransfer(ComputerControlInterface::Pointer computerControlInterface,
+						   FileCollection::Id collectionId);
+	void skipToNextFileTransfer(ComputerControlInterface::Pointer computerControlInterface,
+								FileCollection::Id collectionId);
 	void finishFileTransfer(ComputerControlInterface::Pointer computerControlInterface,
 							FileCollection::Id collectionId, FileCollection::TransferId transferId);
 

@@ -1,7 +1,7 @@
 /*
  * LinuxFilesystemFunctions.cpp - implementation of LinuxFilesystemFunctions class
  *
- * Copyright (c) 2018-2025 Tobias Junghans <tobydox@veyon.io>
+ * Copyright (c) 2018-2026 Tobias Junghans <tobydox@veyon.io>
  *
  * This file is part of Veyon - https://veyon.io
  *
@@ -182,4 +182,39 @@ bool LinuxFilesystemFunctions::openFileSafely( QFile* file, QIODevice::OpenMode 
 	}
 
 	return file->open( fd, openMode, QFileDevice::AutoCloseHandle );
+}
+
+
+
+PlatformCoreFunctions::ProcessId LinuxFilesystemFunctions::findFileLockingProcess(const QString& filePath) const
+{
+	QStringList pidsWithOpenFile;
+	QDir procDir(QStringLiteral("/proc"));
+	const auto targetCanonicalFilePath = QFileInfo(filePath).canonicalFilePath();
+
+	for (const auto& entry : procDir.entryList(QDir::Dirs | QDir::NoDotAndDotDot))
+	{
+		bool ok;
+		qint64 pid = entry.toLong(&ok);
+		if (!ok) continue;
+
+		const auto fdDirPath = QStringLiteral("/proc/%1/fd").arg(entry);
+		QDir fdDir(fdDirPath);
+
+		if (!fdDir.exists() || !fdDir.isReadable())
+		{
+			continue;
+		}
+
+		for (const auto& fdEntryInfo : fdDir.entryInfoList(QDir::Files))
+		{
+			if (fdEntryInfo.isSymLink() &&
+				fdEntryInfo.canonicalFilePath() == targetCanonicalFilePath)
+			{
+				return pid;
+			}
+		}
+	}
+
+	return PlatformCoreFunctions::InvalidProcessId;
 }

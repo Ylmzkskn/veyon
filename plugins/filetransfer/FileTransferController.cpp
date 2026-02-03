@@ -1,7 +1,7 @@
 /*
  * FileTransferController.cpp - implementation of FileTransferController class
  *
- * Copyright (c) 2018-2025 Tobias Junghans <tobydox@veyon.io>
+ * Copyright (c) 2018-2026 Tobias Junghans <tobydox@veyon.io>
  *
  * This file is part of Veyon - https://veyon.io
  *
@@ -197,7 +197,7 @@ bool FileTransferController::openFile()
 	{
 		delete m_fileReadThread;
 		m_fileReadThread = nullptr;
-		Q_EMIT errorOccured( tr( "Could not open file \"%1\" for reading! Please check your permissions!" ).arg( m_currentFileIndex ) );
+		Q_EMIT errorOccured( tr( "Could not open file %1 for reading! Please check your permissions!" ).arg( m_currentFileIndex ) );
 		return false;
 	}
 

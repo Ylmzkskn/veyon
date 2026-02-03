@@ -1,7 +1,7 @@
 /*
  * LinuxCoreFunctions.cpp - implementation of LinuxCoreFunctions class
  *
- * Copyright (c) 2017-2025 Tobias Junghans <tobydox@veyon.io>
+ * Copyright (c) 2017-2026 Tobias Junghans <tobydox@veyon.io>
  *
  * This file is part of Veyon - https://veyon.io
  *
@@ -309,6 +309,19 @@ QString LinuxCoreFunctions::queryDisplayDeviceName(const QScreen& screen) const
 	}
 
 	return QStringLiteral("%1 [%2]").arg(nameParts.join(QLatin1Char(' ')), screen.name());
+}
+
+
+
+QString LinuxCoreFunctions::getApplicationName(ProcessId processId) const
+{
+	QFile file(QStringLiteral("/proc/%1/comm").arg(processId));
+	if (file.open(QFile::ReadOnly))
+	{
+		return QString::fromUtf8(file.readAll().trimmed());
+	}
+
+	return {};
 }
 
 

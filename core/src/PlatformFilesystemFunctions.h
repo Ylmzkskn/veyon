@@ -1,7 +1,7 @@
 /*
  * PlatformFilesystemFunctions.h - interface class for platform filesystem
  *
- * Copyright (c) 2018-2025 Tobias Junghans <tobydox@veyon.io>
+ * Copyright (c) 2018-2026 Tobias Junghans <tobydox@veyon.io>
  *
  * This file is part of Veyon - https://veyon.io
  *
@@ -27,6 +27,7 @@
 #include <QFile>
 
 #include "PlatformPluginInterface.h"
+#include "PlatformCoreFunctions.h"
 
 // clazy:excludeall=copyable-polymorphic
 
@@ -42,5 +43,7 @@ public:
 	virtual bool setFileOwnerGroupPermissions( const QString& filePath, QFile::Permissions permissions ) = 0;
 
 	virtual bool openFileSafely( QFile* file, QFile::OpenMode openMode, QFile::Permissions permissions ) = 0;
+
+	virtual PlatformCoreFunctions::ProcessId findFileLockingProcess(const QString& filePath) const = 0;
 
 };

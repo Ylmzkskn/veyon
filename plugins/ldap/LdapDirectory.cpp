@@ -1,4 +1,4 @@
-// Copyright (c) 2019-2025 Tobias Junghans <tobydox@veyon.io>
+// Copyright (c) 2019-2026 Tobias Junghans <tobydox@veyon.io>
 // This file is part of Veyon - https://veyon.io
 // SPDX-License-Identifier: LGPL-2.0-or-later
 
@@ -388,9 +388,14 @@ QStringList LdapDirectory::computerLocationEntries( const QString& locationName 
 		const auto locationDnFilter = LdapClient::constructQueryFilter( m_locationNameAttribute, locationName, m_computerContainersFilter );
 		const auto locationDns = m_client.queryDistinguishedNames( computersDn(), locationDnFilter, m_defaultSearchScope );
 
-		return m_client.queryDistinguishedNames( locationDns.value( 0 ),
-												 LdapClient::constructQueryFilter( {}, {}, m_computersFilter ),
-												 m_defaultSearchScope );
+		return std::accumulate(locationDns.constBegin(),
+							   locationDns.constEnd(),
+							   QStringList{},
+							   [this](const QStringList& computerDns, const QString& locationDn) {
+			return computerDns + m_client.queryDistinguishedNames(locationDn,
+																  LdapClient::constructQueryFilter({}, {}, m_computersFilter),
+																  m_defaultSearchScope);
+		});
 	}
 
 	const auto groups = computerGroups( locationName );
@@ -404,7 +409,13 @@ QStringList LdapDirectory::computerLocationEntries( const QString& locationName 
 		return {};
 	}
 
-	auto memberComputers = groupMembers( groups.value( 0 ) );
+	auto memberComputers = std::accumulate(
+							   groups.constBegin(),
+							   groups.constEnd(),
+							   QStringList{},
+							   [this](const QStringList& memberComputers, const QString& group) {
+		return memberComputers + groupMembers(group);
+	});
 
 	// computer filter configured?
 	if( m_computersFilter.isEmpty() == false )

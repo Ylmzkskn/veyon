@@ -15,6 +15,7 @@ build_veyon_plugin(windows-platform
 	WindowsInputDeviceFunctions.cpp
 	WindowsKeyboardShortcutTrapper.cpp
 	WindowsNetworkFunctions.cpp
+	WindowsServerProcess.cpp
 	WindowsServiceControl.cpp
 	WindowsServiceCore.cpp
 	WindowsServiceFunctions.cpp
@@ -34,6 +35,7 @@ build_veyon_plugin(windows-platform
 	WindowsInputDeviceFunctions.h
 	WindowsKeyboardShortcutTrapper.h
 	WindowsNetworkFunctions.h
+	WindowsServerProcess.h
 	WindowsServiceControl.h
 	WindowsServiceCore.h
 	WindowsServiceFunctions.h
@@ -61,7 +63,7 @@ target_include_directories(windows-platform PRIVATE
 	${ultravnc_DIR}
 	)
 
-target_link_libraries(windows-platform PRIVATE -lws2_32 -lwtsapi32 -lnetapi32 -luserenv -limm32 -linterception -liphlpapi)
+target_link_libraries(windows-platform PRIVATE -lws2_32 -lwtsapi32 -lnetapi32 -luserenv -limm32 -lntdll -linterception -liphlpapi)
 target_link_libraries(windows-platform PRIVATE Qt6::GuiPrivate)
 target_compile_definitions(windows-platform PRIVATE ULTRAVNC_VEYON_SUPPORT)
 target_compile_options(windows-platform PRIVATE "-Wno-unknown-pragmas")

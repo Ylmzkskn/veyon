@@ -1,7 +1,7 @@
 /*
  * LinuxKeyboardInput.cpp - implementation of LinuxKeyboardInput class
  *
- * Copyright (c) 2019-2025 Tobias Junghans <tobydox@veyon.io>
+ * Copyright (c) 2019-2026 Tobias Junghans <tobydox@veyon.io>
  *
  * This file is part of Veyon - https://veyon.io
  *
@@ -21,6 +21,8 @@
  * Boston, MA 02111-1307, USA.
  *
  */
+
+#include <QThread>
 
 #include "LinuxKeyboardInput.h"
 
@@ -61,10 +63,11 @@ void LinuxKeyboardInput::pressAndReleaseKey( const QByteArray& utf8Data )
 
 
 
-void LinuxKeyboardInput::sendString( const QString& string )
+void LinuxKeyboardInput::sendString(const QString& string, int keyPressInterval)
 {
 	for( int i = 0; i < string.size(); ++i )
 	{
 		pressAndReleaseKey( string.mid( i, 1 ).toUtf8() );
+		QThread::msleep(keyPressInterval);
 	}
 }

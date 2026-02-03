@@ -1,7 +1,7 @@
 /*
  * PlatformCoreFunctions.h - interface class for platform plugins
  *
- * Copyright (c) 2017-2025 Tobias Junghans <tobydox@veyon.io>
+ * Copyright (c) 2017-2026 Tobias Junghans <tobydox@veyon.io>
  *
  * This file is part of Veyon - https://veyon.io
  *
@@ -36,6 +36,9 @@ class QScreen;
 class PlatformCoreFunctions
 {
 public:
+	using ProcessId = qint64;
+	static constexpr ProcessId InvalidProcessId = -1;
+
 	virtual ~PlatformCoreFunctions() = default;
 
 	virtual bool applyConfiguration() = 0;
@@ -66,5 +69,7 @@ public:
 	virtual QString genericUrlHandler() const = 0;
 
 	virtual QString queryDisplayDeviceName(const QScreen& screen) const = 0;
+
+	virtual QString getApplicationName(ProcessId processId) const = 0;
 
 };

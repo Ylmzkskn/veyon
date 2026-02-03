@@ -1,7 +1,7 @@
 /*
  *  MainToolBar.cpp - MainToolBar for MainWindow
  *
- *  Copyright (c) 2007-2025 Tobias Junghans <tobydox@veyon.io>
+ *  Copyright (c) 2007-2026 Tobias Junghans <tobydox@veyon.io>
  *
  *  This file is part of Veyon - https://veyon.io
  *
@@ -43,59 +43,6 @@ MainToolBar::MainToolBar( QWidget* parent ) :
 
 	ToolButton::setToolTipsDisabled( m_mainWindow->masterCore().userConfig().noToolTips() );
 	ToolButton::setIconOnlyMode( m_mainWindow, m_mainWindow->masterCore().userConfig().toolButtonIconOnlyMode() );
-
-	connect(this, &QToolBar::orientationChanged, this, &MainToolBar::setExpanded);
-}
-
-
-
-bool MainToolBar::event(QEvent* event)
-{
-	if (event->type() == QEvent::Leave)
-	{
-		return true;
-	}
-
-	if (event->type() == QEvent::Resize)
-	{
-		updateMinimumSize();
-	}
-
-	return QToolBar::event(event);
-}
-
-
-
-void MainToolBar::setExpanded()
-{
-	if (m_layout)
-	{
-		QMetaObject::invokeMethod(m_layout, "setExpanded", Qt::DirectConnection, Q_ARG(bool, true));
-
-		const auto button = findChild<QToolButton *>("qt_toolbar_ext_button");
-		if (button)
-		{
-			button->setFixedSize(0, 0);
-		}
-	}
-}
-
-
-
-void MainToolBar::updateMinimumSize()
-{
-	if (m_layout)
-	{
-		const auto newSize = m_layout->contentsRect().size();
-		if (orientation() == Qt::Horizontal)
-		{
-			setMinimumSize(0, newSize.height());
-		}
-		else
-		{
-			setMinimumSize(newSize.width(), 0);
-		}
-	}
 }
 
 
